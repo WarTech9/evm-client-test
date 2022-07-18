@@ -5,7 +5,7 @@ import { UXDController, PerpInteractor }from '@uxdprotocol/uxd-evm-client';
 const market = "0x5802918dC503c465F969DA0847b71E3Fbe9B141c"
 const collateral = "0x4200000000000000000000000000000000000006"
 const ethAmount: number = 0.01
-const uxdAmount = 5
+const uxdAmount = 10
 const controllerAddress = "0xc3716fBE06EBFdd6F0741A9F3998ab03DA266AeE"
 const uxdTokenAddress = "0x23901A57A4fE127ee5FfF31DdAB8FBAf83d0539C"
 const rpcEndpoint = "https://kovan.optimism.io"
@@ -17,8 +17,10 @@ let controller: UXDController
 let perp: PerpInteractor
 
 async function main() {
-    await setup()
-    await testMintWithEth()
+    await setup();
+    await checkMintWithEth();
+    await checkApproveUXD();
+    await checkRedeem();
 }
 
 async function setup() {
@@ -72,7 +74,7 @@ async function testMint() {
     console.log('totalSupply = ', ethers.utils.formatEther(uxdTotalSupply));
 }
 
-async function testMintWithEth() {
+async function checkMintWithEth() {
     const currentPrice = await perp.getMarkPrice("ETHUSD");
     targetPrice = currentPrice * 995/1000;
     console.log(`Minting with ETH. [currentPrice = ${currentPrice}, targetPrice = ${targetPrice}]`)
@@ -84,16 +86,27 @@ async function testMintWithEth() {
     await mintTx.wait();
     console.log('mintTx = ', mintTx);
 
-    let uxdTotalSupply = await controller.getRedeemableMintCirculatingSupply()
-    console.log('totalSupply = ', ethers.utils.formatEther(uxdTotalSupply));
+    // let uxdTotalSupply = await controller.getRedeemableMintCirculatingSupply()
+    // console.log('totalSupply = ', ethers.utils.formatEther(uxdTotalSupply));
 }
 
-async function testRedeem() {
+async function checkApproveUXD() {
+
+    const approvalTx = await controller.approveUXD({
+        spender: controllerAddress, 
+        amount: uxdAmount, 
+        signer
+    });
+    await approvalTx.wait();
+    console.log("approvalTx = ", approvalTx);
+}
+
+async function checkRedeem() {
     const currentPrice = await perp.getMarkPrice("ETHUSD");
     targetPrice = currentPrice * 1005/1000;
     console.log(`Redeeming ETH. [currentPrice = ${currentPrice}, targetPrice = ${targetPrice}]`)
     const redeemTx = await controller.redeem({
-        amount: ethAmount,
+        amount: uxdAmount,
         targetPrice,
         signer,
         collateral,
@@ -101,8 +114,8 @@ async function testRedeem() {
     await redeemTx.wait();
     console.log('redeemTx = ', redeemTx)
 
-    let uxdTotalSupply = await controller.getRedeemableMintCirculatingSupply()
-    console.log('totalSupply = ', ethers.utils.formatEther(uxdTotalSupply));
+    // let uxdTotalSupply = await controller.getRedeemableMintCirculatingSupply()
+    // console.log('totalSupply = ', ethers.utils.formatEther(uxdTotalSupply));
 }
 
 main().catch((error) => {
